@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Art Generator</title>
+    <style>
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background-color: #eee;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <label for="x">X (width):</label>
+        <input type="number" id="x" value="10">
+        <label for="y">Y (height):</label>
+        <input type="number" id="y" value="10">
+        <button onclick="generatePixelArt()">Generate Art</button>
+    </div>
+    <canvas id="pixelCanvas"></canvas>
+
+    <script>
+        const artIds = [
+            436535, 437133, 459055, 437880, 437577,
+            436121, 45734, 437224, 436846, 437121,
+            436531, 435882, 436831, 437917, 436453,
+            437329, 435927, 437229, 436810, 437099,
+            436597, 435674, 437635, 436579, 437096,
+            436668, 437178, 436196, 437092, 436608,
+            437927, 436270, 437305, 437682, 437569,
+            436799, 437111, 435766, 436529, 437196,
+            437201, 435909, 436803, 437100, 436279,
+            437299, 436304, 436575, 437471, 437272
+        ];
+
+        async function fetchArt() {
+            const randomArtId = artIds[Math.floor(Math.random() * artIds.length)];
+            const response = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${randomArtId}`);
+            const data = await response.json();
+            return data.primaryImageSmall;
+        }
+
+        function pixelateImage(ctx, img, x, y, width, height, pixelSize) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+
+            for (let y = 0; y < height; y += pixelSize) {
+                for (let x = 0; x < width; x += pixelSize) {
+                    const red = data[((width * y) + x) * 4];
+                    const green = data[((width * y) + x) * 4 + 1];
+                    const blue = data[((width * y) + x) * 4 + 2];
+
+                    ctx.fillStyle = `rgb(${red},${green},${blue})`;
+                    ctx.fillRect(x, y, pixelSize, pixelSize);
+                }
+            }
+        }
+
+        async function generatePixelArt() {
+            const x = parseInt(document.getElementById('x').value);
+            const y = parseInt(document.getElementById('y').value);
+            const canvas = document.getElementById('pixelCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Set canvas size
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Fetch and draw the art
+            const imageUrl = await fetchArt();
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.src = imageUrl;
+
+            img.onload = () => {
+                const pixelSize = Math.min(canvas.width / x, canvas.height / y);
+                pixelateImage(ctx, img, 0, 0, canvas.width, canvas.height, pixelSize);
+            };
+        }
+    </script>
+</body>
+</html>
