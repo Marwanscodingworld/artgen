@@ -14,10 +14,10 @@
 </head>
 <body>
     <div>
-        <label for="x">X (width):</label>
-        <input type="number" id="x" value="10">
-        <label for="y">Y (height):</label>
-        <input type="number" id="y" value="10">
+        <label for="x">X (percentage):</label>
+        <input type="number" id="x" value="64">
+        <label for="y">Y (percentage):</label>
+        <input type="number" id="y" value="64">
         <button onclick="generatePixelArt()">Generate Art</button>
     </div>
     <canvas id="pixelCanvas"></canvas>
@@ -43,32 +43,55 @@
             return data.primaryImageSmall;
         }
 
-        function pixelateImage(ctx, img, x, y, width, height, pixelSize) {
+        function pixelateImage(ctx, img, width, height, pixelSize, visibilityMatrix) {
             ctx.drawImage(img, 0, 0, width, height);
             const imageData = ctx.getImageData(0, 0, width, height);
             const data = imageData.data;
 
             for (let y = 0; y < height; y += pixelSize) {
                 for (let x = 0; x < width; x += pixelSize) {
-                    const red = data[((width * y) + x) * 4];
-                    const green = data[((width * y) + x) * 4 + 1];
-                    const blue = data[((width * y) + x) * 4 + 2];
-
-                    ctx.fillStyle = `rgb(${red},${green},${blue})`;
-                    ctx.fillRect(x, y, pixelSize, pixelSize);
+                    const isVisible = visibilityMatrix[Math.floor(y / pixelSize)][Math.floor(x / pixelSize)];
+                    if (isVisible) {
+                        ctx.putImageData(imageData, x, y, x, y, pixelSize, pixelSize);
+                    } else {
+                        ctx.clearRect(x, y, pixelSize, pixelSize);
+                    }
                 }
             }
+        }
+
+        function generateVisibilityMatrix(gridX, gridY, totalPixels) {
+            const matrix = Array.from({ length: gridY }, () => Array(gridX).fill(false));
+            const numberOfVisiblePixels = Math.floor((totalPixels * gridX * gridY) / 100);
+
+            for (let i = 0; i < numberOfVisiblePixels; i++) {
+                let randomX, randomY;
+                do {
+                    randomX = Math.floor(Math.random() * gridX);
+                    randomY = Math.floor(Math.random() * gridY);
+                } while (matrix[randomY][randomX]); // Ensure no duplicate spots are chosen
+
+                matrix[randomY][randomX] = true;
+            }
+
+            return matrix;
         }
 
         async function generatePixelArt() {
             const x = parseInt(document.getElementById('x').value);
             const y = parseInt(document.getElementById('y').value);
+            const totalPixels = x / y * 100;
+            const gridSize = 64;
+
             const canvas = document.getElementById('pixelCanvas');
             const ctx = canvas.getContext('2d');
 
             // Set canvas size
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+
+            const pixelSize = Math.min(canvas.width / gridSize, canvas.height / gridSize);
+            const visibilityMatrix = generateVisibilityMatrix(gridSize, gridSize, totalPixels);
 
             // Fetch and draw the art
             const imageUrl = await fetchArt();
@@ -77,8 +100,7 @@
             img.src = imageUrl;
 
             img.onload = () => {
-                const pixelSize = Math.min(canvas.width / x, canvas.height / y);
-                pixelateImage(ctx, img, 0, 0, canvas.width, canvas.height, pixelSize);
+                pixelateImage(ctx, img, canvas.width, canvas.height, pixelSize, visibilityMatrix);
             };
         }
     </script>
