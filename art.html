@@ -10,15 +10,26 @@
             margin: 0 auto;
             background-color: #eee;
         }
+        #art-title {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
-    <div>
+    <div id="art-title">Art Title: Loading...</div>
+    <div class="controls">
         <label for="x">X (percentage):</label>
         <input type="number" id="x" value="64">
         <label for="y">Y (percentage):</label>
         <input type="number" id="y" value="64">
         <button onclick="generatePixelArt()">Generate Art</button>
+        <button onclick="changeArtPiece()">Change Art Piece</button>
     </div>
     <canvas id="pixelCanvas"></canvas>
 
@@ -36,11 +47,16 @@
             437299, 436304, 436575, 437471, 437272
         ];
 
+        let currentImageUrl = '';
+        let currentArtTitle = '';
+
         async function fetchArt() {
             const randomArtId = artIds[Math.floor(Math.random() * artIds.length)];
             const response = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${randomArtId}`);
             const data = await response.json();
-            return data.primaryImageSmall;
+            currentImageUrl = data.primaryImageSmall;
+            currentArtTitle = data.title;
+            document.getElementById('art-title').textContent = `Art Title: ${currentArtTitle}`;
         }
 
         function pixelateImage(ctx, img, width, height, pixelSize, visibilityMatrix) {
@@ -78,6 +94,10 @@
         }
 
         async function generatePixelArt() {
+            if (!currentImageUrl) {
+                await fetchArt(); // Ensure we have an image to work with
+            }
+
             const x = parseInt(document.getElementById('x').value);
             const y = parseInt(document.getElementById('y').value);
             const totalPixels = x / y * 100;
@@ -93,16 +113,22 @@
             const pixelSize = Math.min(canvas.width / gridSize, canvas.height / gridSize);
             const visibilityMatrix = generateVisibilityMatrix(gridSize, gridSize, totalPixels);
 
-            // Fetch and draw the art
-            const imageUrl = await fetchArt();
             const img = new Image();
             img.crossOrigin = "Anonymous";
-            img.src = imageUrl;
+            img.src = currentImageUrl;
 
             img.onload = () => {
                 pixelateImage(ctx, img, canvas.width, canvas.height, pixelSize, visibilityMatrix);
             };
         }
+
+        async function changeArtPiece() {
+            await fetchArt();
+            generatePixelArt(); // Automatically generate art with new piece
+        }
+
+        // Load an initial art piece on page load
+        changeArtPiece();
     </script>
 </body>
 </html>
